@@ -9,12 +9,12 @@ description: >-
   multi-repository operations.
 ---
 
-# HAIFA skill: driving the `factory` CLI (aifactory 0.1.556)
+# HAIFA skill: driving the `factory` CLI (aifactory 0.1.560)
 
 This guide is generated from the installed code by `factory --skill`.
 Save its Markdown output as an agent's `SKILL.md`; `factory --skill --json`
 returns the same guide inside the JSON envelope. Compare `factory --version`
-with aifactory 0.1.556: whenever the version changes, regenerate this skill
+with aifactory 0.1.560: whenever the version changes, regenerate this skill
 with `factory --skill` and replace the saved copy.
 
 ## Prerequisites
@@ -812,12 +812,13 @@ Compare every item of the installed seed with HEAD of the library and the seed v
 ### factory learn scan
 
 ```
-factory learn scan [--since DATE] [--json] [--repo PATH]
+factory learn scan [--since DATE] [--all] [--json] [--repo PATH]
 ```
 
-Read the objections of every task run of the repo from the trace DB (blocking items and unmet findings of review and test review envelopes, test triage of failed checks, revise phases) and let the read-only agent 'learner' (prompts overridable in .factory/prompts/learner/) group similar ones into lessons, in an isolated checkout of the base commit. A lesson has a short rule, where it belongs (CLAUDE.md, AGENTS.md, a skill of the repo or the prompt of a role), its occurrences (the distinct runs), the runs and snippets of the objections. A lesson seen in one run only is not proposed, nor one a person accepted (factory learn accept) or rejected (factory learn dismiss). Proposed lessons are saved in the trace DB; nothing in the repo is written.
+Read the objections of every task run of the repo from the trace DB (blocking items and unmet findings of review and test review envelopes, test triage of failed checks, revise phases) and let the read-only agent 'learner' (prompts overridable in .factory/prompts/learner/) group similar ones into lessons, in an isolated checkout of the base commit. A lesson has a short rule, where it belongs (CLAUDE.md, AGENTS.md, a skill of the repo or the prompt of a role), its occurrences (the distinct runs), the runs and snippets of the objections. A lesson seen in one run only is not proposed, nor one a person accepted (factory learn accept) or rejected (factory learn dismiss). Proposed lessons are saved in the trace DB; nothing in the repo is written. With --all the objections of every repo registered in the dashboard are read and every lesson names the repo its rule belongs to.
 
 - `--since` `DATE`: only objections from this date (YYYY-MM-DD) or ISO timestamp on
+- `--all`: read the objections of every repo registered in the dashboard; each lesson names the repo its rule belongs to and is saved in that repo's trace DB (factory shortcomings go to the HAIFA repo, target 'seed' only there)
 - `--json`: print machine-readable JSON
 - `--repo` `PATH`: repository root with .factory/config.yaml (default: the current git repo)
 
@@ -1730,7 +1731,7 @@ and after its pull request was merged. The agent's prompts are overridden in
    The dashboard's kanban sets the order of ready tasks (taken first) and can exclude a
    task from auto-continue (skipped as `excluded`, with `--auto` too; it still runs when
    started by hand).
-   Tasks it skips carry a reason (`human_task`, `no_workflow`, `waits_on_pr`, `blocked`, `in_review`, `running`, `cannot_start`, `writes_overlap`, `exclusive`, `excluded`, `no_slot`); the chain stops with
+   Tasks it skips carry a reason (`human_task`, `no_workflow`, `waits_on_pr`, `blocked`, `in_review`, `merged_outside`, `running`, `cannot_start`, `writes_overlap`, `exclusive`, `excluded`, `no_slot`); the chain stops with
    `failed`, `exhausted`, `disabled`, `not_merged` (`data.chain.stop`, `data.chain.waiting`). The chain approves and
    merges nothing except through `auto_merge` (next point).
    Self-healing (`auto_heal`, inherited like `auto_continue`, default `true`; switch it off
