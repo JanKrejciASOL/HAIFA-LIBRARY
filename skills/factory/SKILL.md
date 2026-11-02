@@ -9,12 +9,12 @@ description: >-
   multi-repository operations.
 ---
 
-# HAIFA skill: driving the `factory` CLI (aifactory 0.1.556)
+# HAIFA skill: driving the `factory` CLI (aifactory 0.1.563)
 
 This guide is generated from the installed code by `factory --skill`.
 Save its Markdown output as an agent's `SKILL.md`; `factory --skill --json`
 returns the same guide inside the JSON envelope. Compare `factory --version`
-with aifactory 0.1.556: whenever the version changes, regenerate this skill
+with aifactory 0.1.563: whenever the version changes, regenerate this skill
 with `factory --skill` and replace the saved copy.
 
 ## Prerequisites
@@ -812,12 +812,13 @@ Compare every item of the installed seed with HEAD of the library and the seed v
 ### factory learn scan
 
 ```
-factory learn scan [--since DATE] [--json] [--repo PATH]
+factory learn scan [--since DATE] [--all] [--json] [--repo PATH]
 ```
 
-Read the objections of every task run of the repo from the trace DB (blocking items and unmet findings of review and test review envelopes, test triage of failed checks, revise phases) and let the read-only agent 'learner' (prompts overridable in .factory/prompts/learner/) group similar ones into lessons, in an isolated checkout of the base commit. A lesson has a short rule, where it belongs (CLAUDE.md, AGENTS.md, a skill of the repo or the prompt of a role), its occurrences (the distinct runs), the runs and snippets of the objections. A lesson seen in one run only is not proposed, nor one a person accepted (factory learn accept) or rejected (factory learn dismiss). Proposed lessons are saved in the trace DB; nothing in the repo is written.
+Read the objections of every task run of the repo from the trace DB (blocking items and unmet findings of review and test review envelopes, test triage of failed checks, revise phases) and let the read-only agent 'learner' (prompts overridable in .factory/prompts/learner/) group similar ones into lessons, in an isolated checkout of the base commit. A lesson has a short rule, where it belongs (CLAUDE.md, AGENTS.md, a skill of the repo or the prompt of a role), its occurrences (the distinct runs), the runs and snippets of the objections. A lesson seen in one run only is not proposed, nor one a person accepted (factory learn accept) or rejected (factory learn dismiss). Proposed lessons are saved in the trace DB; nothing in the repo is written. With --all the objections of every repo registered in the dashboard are read and every lesson names the repo its rule belongs to.
 
 - `--since` `DATE`: only objections from this date (YYYY-MM-DD) or ISO timestamp on
+- `--all`: read the objections of every repo registered in the dashboard; each lesson names the repo its rule belongs to and is saved in that repo's trace DB (factory shortcomings go to the HAIFA repo, target 'seed' only there)
 - `--json`: print machine-readable JSON
 - `--repo` `PATH`: repository root with .factory/config.yaml (default: the current git repo)
 
@@ -1691,22 +1692,38 @@ The agent's prompts are overridden in `.factory/prompts/proposer/`.
 repo from the trace DB (blocking items and unmet findings of the review and test review,
 test triage of failed checks, revise phases) and lets the read-only agent `learner` group
 similar ones into lessons. Each of `data.lessons` has an `id`, a short `rule`, a `target`
-(`CLAUDE.md`, `AGENTS.md`, `skill` or `prompt`, with `target_detail` naming the skill or
-role), `occurrences` (the distinct runs), `runs` and `complaints` (snippets with their run).
-A lesson seen in one run only is never proposed. Show the lessons to the user and let them
-decide; never write a rule into the repo yourself.
-`factory learn accept ID [--project ID] --json` files the lesson as a task in the step
-`LEARN` of the repo's project (created when missing) with workflow `build-review`, `writes`
-on the lesson's target only and the rule with the objections as evidence, and commits it to
-`base`; `data.task` names it. Run it like any task (it ends in a pull request). The project
-is `--project`, else the one of the tasks whose runs objected, else the only project
+(`CLAUDE.md`, `AGENTS.md`, `skill`, `prompt` or `seed`, with `target_detail` naming the
+skill or role), `repo` (the registry id of the target repo the rule belongs to, '' when the
+repo is not registered), `origin` and `origin_repos` (the repos its objections came from
+and their number), `occurrences` (the distinct runs), `runs` and `complaints` (snippets with
+their run). A lesson seen in one run only is never proposed. Show the lessons to the user
+and let them decide; never write a rule into the repo yourself.
+`factory learn scan --all --json` reads the objections of every repo registered in the
+dashboard (objection keys prefixed `<repo_id>:`; a repo without a trace DB is skipped with a
+warning in the envelope's `warnings`) and sets `data.all` and `data.repos` (the number of
+repos with objections). The learner still runs in an isolated clone of the current repo.
+Each lesson is saved in the trace DB of its target repo (`repo`), not of the repo the scan
+runs in: a rule about one repo's conventions or code goes to that repo, a shortcoming of
+the factory itself (a role or agent) to the factory repo. The factory repo is the
+registered repo named by `HAIFA_FACTORY_REPO`, else the one whose `aifactory/pyproject.toml`
+names the project `aifactory`. The target `seed` (a role prompt in
+`aifactory/src/aifactory/seed/agents/`) is allowed only for the factory repo. Without
+`--all` only the current repo is read.
+`factory learn accept ID [--project ID] --json`, run in the target repo (the one whose
+trace DB holds the lesson; `--repo PATH` for another), files the lesson as a task in the
+step `LEARN` of that repo's project (created when missing) with workflow `build-review`,
+`writes` on the lesson's target only and the rule with the objections (from the runs of
+every repo, each with its repo) as evidence, and commits it to `base`; `data.task` names
+it. Run it like any task (it ends in a pull request). The project is `--project`, else the
+one of the target repo's tasks whose runs objected, else the only project
 (`project_required` otherwise). Accepting again shows the same task (`data.existed`).
 `factory learn dismiss ID [--reason TEXT] --json` rejects a lesson in the trace DB. No later
 scan offers an accepted or dismissed lesson or its objections again. Objections that repeat
 an accepted lesson are added to it instead (`data.repeats`: lesson `id` and the number
-`added`); the dashboard's Factory screen (section Lekce) shows the lessons, scans, accepts
-and dismisses them, and counts for an accepted lesson the runs with its objections before
-and after its pull request was merged. The agent's prompts are overridden in
+`added`); the dashboard's Factory screen (section Lekce, switch Ze všech rep for `--all`,
+with links to the Lekce section of the repos that got lessons) shows the lessons, scans,
+accepts and dismisses them, and counts for an accepted lesson the runs with its objections
+before and after its pull request was merged. The agent's prompts are overridden in
 `.factory/prompts/learner/`.
 
 ### Run
@@ -1730,7 +1747,7 @@ and after its pull request was merged. The agent's prompts are overridden in
    The dashboard's kanban sets the order of ready tasks (taken first) and can exclude a
    task from auto-continue (skipped as `excluded`, with `--auto` too; it still runs when
    started by hand).
-   Tasks it skips carry a reason (`human_task`, `no_workflow`, `waits_on_pr`, `blocked`, `in_review`, `running`, `cannot_start`, `writes_overlap`, `exclusive`, `excluded`, `no_slot`); the chain stops with
+   Tasks it skips carry a reason (`human_task`, `no_workflow`, `waits_on_pr`, `blocked`, `in_review`, `merged_outside`, `running`, `cannot_start`, `writes_overlap`, `exclusive`, `excluded`, `no_slot`); the chain stops with
    `failed`, `exhausted`, `disabled`, `not_merged` (`data.chain.stop`, `data.chain.waiting`). The chain approves and
    merges nothing except through `auto_merge` (next point).
    Self-healing (`auto_heal`, inherited like `auto_continue`, default `true`; switch it off
