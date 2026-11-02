@@ -9,12 +9,12 @@ description: >-
   multi-repository operations.
 ---
 
-# HAIFA skill: driving the `factory` CLI (aifactory 0.1.563)
+# HAIFA skill: driving the `factory` CLI (aifactory 0.1.569)
 
 This guide is generated from the installed code by `factory --skill`.
 Save its Markdown output as an agent's `SKILL.md`; `factory --skill --json`
 returns the same guide inside the JSON envelope. Compare `factory --version`
-with aifactory 0.1.563: whenever the version changes, regenerate this skill
+with aifactory 0.1.569: whenever the version changes, regenerate this skill
 with `factory --skill` and replace the saved copy.
 
 ## Prerequisites
@@ -1248,6 +1248,7 @@ Every key, including nested entries, is generated from the configuration model.
 | `max_parallel_runs` | `1` | Maximum concurrent task runs within one auto-continue chain. |
 | `protected_files` | `[".factory/"]` | Paths protected from agents unless explicitly allowed by their writes; task scope still applies. |
 | `generated` | `[]` | Tracked build outputs and rebuild commands used when resolving conflicts. |
+| `follow_up_workflows` | `{}` | Workflows by follow-up severity; an explicit agent workflow takes precedence. |
 | `azure` | `null` | Azure DevOps connection details; required when git_provider is azure. |
 | `azure.organization` | `required` | Azure DevOps organization name or full URL. |
 | `azure.project` | `required` | Azure DevOps project name. |
@@ -1747,7 +1748,7 @@ before and after its pull request was merged. The agent's prompts are overridden
    The dashboard's kanban sets the order of ready tasks (taken first) and can exclude a
    task from auto-continue (skipped as `excluded`, with `--auto` too; it still runs when
    started by hand).
-   Tasks it skips carry a reason (`human_task`, `no_workflow`, `waits_on_pr`, `blocked`, `in_review`, `merged_outside`, `running`, `cannot_start`, `writes_overlap`, `exclusive`, `excluded`, `no_slot`); the chain stops with
+   Tasks it skips carry a reason (`needs_environment`, `human_task`, `no_workflow`, `waits_on_pr`, `blocked`, `in_review`, `merged_outside`, `running`, `cannot_start`, `writes_overlap`, `exclusive`, `excluded`, `no_slot`); the chain stops with
    `failed`, `exhausted`, `disabled`, `not_merged` (`data.chain.stop`, `data.chain.waiting`). The chain approves and
    merges nothing except through `auto_merge` (next point).
    Self-healing (`auto_heal`, inherited like `auto_continue`, default `true`; switch it off
