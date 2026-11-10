@@ -9,12 +9,12 @@ description: >-
   multi-repository operations.
 ---
 
-# HAIFA skill: driving the `factory` CLI (aifactory 0.1.573)
+# HAIFA skill: driving the `factory` CLI (aifactory 0.1.576)
 
 This guide is generated from the installed code by `factory --skill`.
 Save its Markdown output as an agent's `SKILL.md`; `factory --skill --json`
 returns the same guide inside the JSON envelope. Compare `factory --version`
-with aifactory 0.1.573: whenever the version changes, regenerate this skill
+with aifactory 0.1.576: whenever the version changes, regenerate this skill
 with `factory --skill` and replace the saved copy.
 
 ## Prerequisites
@@ -92,6 +92,15 @@ Rules (every command follows them, tests enforce them):
 ## Commands
 
 ### Switch the local roster
+
+Repository operating settings live outside Git in HAIFA_HOME. Use
+`factory config local show --json` and
+`factory config local set --auto-merge on --auto-continue off --harness codex --json`.
+Both accept `--repo PATH` without dashboard registration. `--harness inherit` restores
+the computer default. Set patches only supplied fields. Missing settings mean both
+automations are off; invalid files and unsupported versions fail without legacy fallback
+or overwriting the file. These commands are the shared storage contract; S11 runtime
+and dashboard integration must ship together before these switches control running work.
 
 `factory config roster show --json` lists effective local agent harness/model/thinking.
 `factory config roster set codex --dry-run --json` previews all-Codex
@@ -270,12 +279,12 @@ List every run of a task, newest first: state, failure_kind (why a run did not s
 factory task run ID [--note TEXT] [--force] [--auto] [--harness NAME] [--model NAME] [--thinking {off,minimal,low,medium,high,xhigh,max,ultra}] [--member] [--started-by {manual,auto-continue,auto-resolve,auto-ci-fix}] [--json] [--repo PATH]
 ```
 
-Run a task from the backlog in base in a new worktree <worktrees_dir>/<run-id> on a new branch factory/<task-id>-<n>. Agents may change only the task's writes and its spec/doc files inside the worktree; anything else, including any change in the main checkout, is rolled back and fails the phase. With --auto a run that opened its PR is followed by the next ready task (auto-continue). Without it auto_continue: true (from the index.md of the step or project) must hold for both the finished and the next task. With auto_merge: true a reviewed run's PR is merged first when it may be (see 'factory backlog auto-merge --help').
+Run a task from the backlog in base in a new worktree <worktrees_dir>/<run-id> on a new branch factory/<task-id>-<n>. Agents may change only the task's writes and its spec/doc files inside the worktree; anything else, including any change in the main checkout, is rolled back and fails the phase. Repository-local auto_continue controls whether the next ready task follows. --auto is deprecated and cannot override local off. With repository-local auto_merge on a reviewed run's PR is merged first when it may be (see 'factory config local --help').
 
 - `ID`: task id (required)
 - `--note` `TEXT`: a note for the agents, appended to the task
 - `--force`: run even if depends_on are not done in base; never overrides a running task
-- `--auto`: after a successful run (PR opened) start the next ready task of the step, then of the project, whatever its auto_continue (auto-continue); a failure stops the chain. The kanban's queue order goes first and tasks excluded in the kanban are never started by the chain
+- `--auto`: deprecated compatibility option; automatic continuation follows repository-local auto_continue, set with factory config local set --auto-continue on/off
 - `--harness` `NAME`: run every agent of the roster on this harness for this run only (nothing is written); a switch without --model takes the harness's preset model. Step overrides of the workflow still win, so one workflow can mix harnesses. With --auto only the first run of the chain gets it
 - `--model` `NAME`: model of every agent for this run only (like --harness)
 - `--thinking` `{off,minimal,low,medium,high,xhigh,max,ultra}`: thinking level of every agent for this run only (like --harness) (one of `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, `ultra`)
@@ -396,7 +405,7 @@ Continue the task's newest failed, stopped or aborted run in its own worktree an
 - `--run` `RUN_ID`: retry exactly this run (it must belong to the task)
 - `--note` `TEXT`: a note for the agents of the continuing phases
 - `--from` `PHASE`: continue from this phase (a phase name like review_2 or a step like review) instead of the one that failed; the phases after it run again
-- `--auto`: after a successful retry (PR opened) start the next ready task whatever its auto_continue, like factory task run --auto. Without it the retry goes on like task run: auto_merge merges the PR and auto_continue starts the next ready task
+- `--auto`: deprecated compatibility option; follows repository-local auto_continue
 - `--allow-writes`: after a writes_violation or writes_needed: add the paths written outside writes or reported in needs_writes to the task's writes (committed to base by base_changes), then retry from the failed phase with the paths in the Retry note. Paths in protected_files, in the backlog or in the main checkout are never added. If base lacks the new writes (writes_not_committed), commit the backlog, then factory task retry ID
 - `--harness` `NAME`: continue with every agent on this harness (e.g. after a quota failure); it replaces the run's harness override, the switch is recorded in the run and its PR. Without --model the computer's model for the harness, else its preset model
 - `--model` `NAME`: model of every agent for the retry (with --harness)
@@ -543,6 +552,31 @@ Validate a workflow file against the role registry (.factory/roles.yaml or the p
 - `--json`: print machine-readable JSON
 - `--roles` `PATH`: role registry instead of .factory/roles.yaml
 - `--agents` `PATH`: agent roster instead of .factory/agents.yaml
+
+### factory config local show
+
+```
+factory config local show [--repo PATH] [--json]
+```
+
+read local repository settings
+
+- `--repo` `PATH`
+- `--json`: print the JSON envelope
+
+### factory config local set
+
+```
+factory config local set [--auto-merge {on,off}] [--auto-continue {on,off}] [--harness {claude,codex,pi,inherit}] [--repo PATH] [--json]
+```
+
+update supplied local fields only
+
+- `--auto-merge` `{on,off}` (one of `on`, `off`)
+- `--auto-continue` `{on,off}` (one of `on`, `off`)
+- `--harness` `{claude,codex,pi,inherit}` (one of `claude`, `codex`, `pi`, `inherit`)
+- `--repo` `PATH`
+- `--json`: print the JSON envelope
 
 ### factory config roster show
 
@@ -899,6 +933,8 @@ serve the local dashboard (127.0.0.1 unless --host) and open it
 | `already_installed` | 2 | factory init: .factory/config.yaml is committed |
 | `already_running` | 2 | a run of this task is in progress |
 | `approve_failed` | 2 | host approval failed or the pull request head changed; merge stopped |
+| `auto_continue_disabled` | 2 | repository-local auto continue blocks an automatic start |
+| `auto_merge_disabled` | 2 | repository-local auto merge is off; PR remains open |
 | `az_devops_missing` | 2 | the az devops extension is not installed |
 | `az_failed` | 2 | an az command failed |
 | `az_missing` | 2 | the az CLI is not installed |
@@ -998,6 +1034,9 @@ serve the local dashboard (127.0.0.1 unless --host) and open it
 | `remote_run` | 2 | stop the shared run on the machine that started it |
 | `repo_io_error` | 2 | a registered repository could not be read or written |
 | `repo_missing` | 2 | dashboard API: the registered repository's folder is gone (HTTP 404) |
+| `repo_settings_invalid` | 2 | local repository or inherited harness settings are invalid |
+| `repo_settings_io` | 2 | local repository settings could not be read or saved |
+| `repo_settings_version` | 2 | local repository settings version is unsupported |
 | `run_already_paused` | 2 | the run is already pausing or paused (factory task pause) |
 | `run_in_progress` | 2 | a run with a live process is in progress in the repository (blocks base moves and config set/remove/move) |
 | `run_not_archived` | 2 | only an archived run can be deleted |
@@ -1762,10 +1801,9 @@ before and after its pull request was merged. The agent's prompts are overridden
    done without changes and the chain goes on; every other kind stops the chain as before.
    Each action is in `data.chain.events` (`action`: `fallback`, `retry` or `close`, `ok`,
    `text`), in `task_chains.events` and on the dashboard's Overview.
-6. Auto-merge (`auto_merge: true`, inherited project -> step -> task; set it with
-   `factory backlog auto-merge ID --on|--off|--inherit` or on a task with
-   `factory task edit ID --auto-merge on|off|inherit`, e.g. off for a task that changes
-   the guard or permissions): after the run its PR is approved and merged like
+6. Auto-merge is a repository-local choice in HAIFA_HOME, set with
+   `factory config local set --auto-merge on|off`. Backlog flags do not control it.
+   After the run its PR is approved and merged like
    `factory task approve` (`merged_by: auto-merge` in `task_prs`) only when the run
    `succeeded`, the workflow has a review phase whose last review approved with no blocking
    or unmet item, the PR merges cleanly and its checks finished with none red. Running
@@ -1774,7 +1812,13 @@ before and after its pull request was merged. The agent's prompts are overridden
    review is never merged automatically. Otherwise `data.auto_merge` (`merged`, `code`,
    `reason`) says why and the PR waits for `factory task approve`. With auto-continue the
    next task starts only after the merge; a PR that was not merged stops the chain
-   (`not_merged`).
+   (`not_merged`). The local value is read again while waiting for CI and immediately
+   before the hosting merge, serialized with settings updates. Off leaves the PR open;
+   a status-done commit already pushed for CI stays on its branch. A hosting merge
+   request already submitted cannot be withdrawn. Manual approve is explicit and
+   independent of this flag and `base_pr_merge`. Auto continue off does not prevent
+   finishing the current PR when auto merge stays on; changing auto merge never changes
+   auto continue. Missing settings default to off; invalid settings stop automation.
 7. Parallel runs (`max_parallel_runs` in `.factory/config.yaml`, whole number ≥ 1,
    default 1): with 1 the chain runs one task after another. Above 1 the chain keeps up to
    that many slots taken (each run a separate `factory task run` process) and refills a
@@ -1900,7 +1944,7 @@ the network (RPC failed, HTTP2 framing, remote end hung up, timeout) is retried 
 with a pause, including hosting server errors (HTTP 5xx, Internal Server Error); a rejected
 push (non-fast-forward, rights, protected branch or hook) is not.
 
-After publication, effective `auto_merge` merges the PR under the same review and CI
+After publication, repository-local `auto_merge` merges the PR under the same review and CI
 conditions as `task run`, including conflict resolution and `auto_merge_error` on failure.
 The same auto-continue chain then selects ready tasks in kanban order and respects slots
 and `max_parallel_runs`. No `--auto` flag is needed: inherited `auto_continue` applies.
