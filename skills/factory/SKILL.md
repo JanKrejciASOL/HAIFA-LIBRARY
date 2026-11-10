@@ -9,12 +9,12 @@ description: >-
   multi-repository operations.
 ---
 
-# HAIFA skill: driving the `factory` CLI (aifactory 0.1.581)
+# HAIFA skill: driving the `factory` CLI (aifactory 0.1.582)
 
 This guide is generated from the installed code by `factory --skill`.
 Save its Markdown output as an agent's `SKILL.md`; `factory --skill --json`
 returns the same guide inside the JSON envelope. Compare `factory --version`
-with aifactory 0.1.581: whenever the version changes, regenerate this skill
+with aifactory 0.1.582: whenever the version changes, regenerate this skill
 with `factory --skill` and replace the saved copy.
 
 ## Prerequisites
@@ -966,6 +966,7 @@ serve the local dashboard (127.0.0.1 unless --host) and open it
 | code | exit | meaning |
 | --- | --- | --- |
 | `backlog_invalid` | 1 | the backlog has problems (backlog check) or the write would break it (nothing written); see error.issues |
+| `check_timeout` | 1 | dashboard API: the machine check did not finish within its time budget; data is the last known report (stale, checked_at) and data.progress the unfinished step |
 | `checks_failed` | 1 | factory check found errors; see data.findings |
 | `harness_missing` | 1 | a harness CLI is missing or broken; see data.harnesses |
 | `learn_failed` | 1 | learn scan: the agent reported that it cannot judge the objections |
