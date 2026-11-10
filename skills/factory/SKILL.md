@@ -9,12 +9,12 @@ description: >-
   multi-repository operations.
 ---
 
-# HAIFA skill: driving the `factory` CLI (aifactory 0.1.573)
+# HAIFA skill: driving the `factory` CLI (aifactory 0.1.581)
 
 This guide is generated from the installed code by `factory --skill`.
 Save its Markdown output as an agent's `SKILL.md`; `factory --skill --json`
 returns the same guide inside the JSON envelope. Compare `factory --version`
-with aifactory 0.1.573: whenever the version changes, regenerate this skill
+with aifactory 0.1.581: whenever the version changes, regenerate this skill
 with `factory --skill` and replace the saved copy.
 
 ## Prerequisites
@@ -91,7 +91,41 @@ Rules (every command follows them, tests enforce them):
 
 ## Commands
 
+### Local repository choices and legacy import
+
+`factory config local show --repo PATH --json` reads the local choices without creating
+anything. Both automations default to off; the harness inherits this computer's default.
+The Overview card changes the same settings immediately, without a commit. Worktrees share
+their common Git identity; another clone or HAIFA_HOME has separate choices. Enabling a
+choice does not start work. `base_pr_merge` for administration PRs remains separate.
+
+Preview preserved legacy effective values and origins through project, step and task with
+`factory config local legacy --repo PATH --json`.
+Explicitly adopt with `factory config local import --repo PATH --json`. Uniform values can
+be adopted directly. Conflicts require concrete repository-wide `--auto-merge on|off`,
+`--auto-continue on|off` or `--harness claude|codex|pi|inherit` choices. Existing local choices
+are preserved unless `--overwrite` is explicit. Import is atomic and idempotent, writes
+only HAIFA_HOME and leaves shared backlog bytes intact. Model/thinking are preview metadata;
+the imported harness uses local presets/roster. Git pull does not change local choices.
+
+An unupgraded computer continues using frontmatter; an upgraded computer uses local choices.
+Reads and upgrades never import silently. Restart an already running dashboard normally after
+installing this version. No transition commit or minimum-version barrier is required.
+Legacy keys remain readable and preserved by normal edits, approval and sync; new tasks do
+not need them. `backlog auto-continue`, `backlog auto-merge` and `task edit --auto-merge`
+return `deprecated_option` with the `config local set` alternative. Do not clean up existing
+backlog fields; their future removal is a separate change.
+
 ### Switch the local roster
+
+Repository operating settings live outside Git in HAIFA_HOME. Use
+`factory config local show --json` and
+`factory config local set --auto-merge on --auto-continue off --harness codex --json`.
+Both accept `--repo PATH` without dashboard registration. `--harness inherit` restores
+the computer default. Set patches only supplied fields. Missing settings mean both
+automations are off; invalid files and unsupported versions fail without legacy fallback
+or overwriting the file. These commands are the shared storage contract; S11 runtime
+and dashboard integration must ship together before these switches control running work.
 
 `factory config roster show --json` lists effective local agent harness/model/thinking.
 `factory config roster set codex --dry-run --json` previews all-Codex
@@ -182,7 +216,7 @@ Create a new todo task file in the directory of STEP. The backlog is validated b
 factory task edit ID [--title TEXT] [--status STATUS] [--workflow NAME] [--clear-workflow] [--writes [PATH ...]] [--clear-writes] [--auto-merge {on,off,inherit}] [--assignee {agent,human,inherit}] [--json] [--repo PATH]
 ```
 
-Change title, status (todo|cancelled, or done for a person's task), workflow, writes, auto_merge or assignee of a task.
+Change title, status (todo|cancelled, or done for a person's task), workflow, writes or assignee of a task. --auto-merge is deprecated; use factory config local set --auto-merge on|off.
 
 - `ID`: task id (required)
 - `--title` `TEXT`: new title
@@ -191,7 +225,7 @@ Change title, status (todo|cancelled, or done for a person's task), workflow, wr
 - `--clear-workflow`: remove the workflow (inherit it)
 - `--writes` `[PATH ...]`: set writes (none = [])
 - `--clear-writes`: remove writes (inherit)
-- `--auto-merge` `{on,off,inherit}`: set auto_merge of the task (off, e.g. when it changes the guard or permissions) or remove it (inherit) (one of `on`, `off`, `inherit`)
+- `--auto-merge` `{on,off,inherit}`: deprecated; use factory config local set --auto-merge on|off (one of `on`, `off`, `inherit`)
 - `--assignee` `{agent,human,inherit}`: human: the task is for a person and no run starts it; inherit removes it (one of `agent`, `human`, `inherit`)
 - `--json`: print machine-readable JSON
 - `--repo` `PATH`: repository root with .factory/config.yaml (default: the current git repo)
@@ -270,12 +304,12 @@ List every run of a task, newest first: state, failure_kind (why a run did not s
 factory task run ID [--note TEXT] [--force] [--auto] [--harness NAME] [--model NAME] [--thinking {off,minimal,low,medium,high,xhigh,max,ultra}] [--member] [--started-by {manual,auto-continue,auto-resolve,auto-ci-fix}] [--json] [--repo PATH]
 ```
 
-Run a task from the backlog in base in a new worktree <worktrees_dir>/<run-id> on a new branch factory/<task-id>-<n>. Agents may change only the task's writes and its spec/doc files inside the worktree; anything else, including any change in the main checkout, is rolled back and fails the phase. With --auto a run that opened its PR is followed by the next ready task (auto-continue). Without it auto_continue: true (from the index.md of the step or project) must hold for both the finished and the next task. With auto_merge: true a reviewed run's PR is merged first when it may be (see 'factory backlog auto-merge --help').
+Run a task from the backlog in base in a new worktree <worktrees_dir>/<run-id> on a new branch factory/<task-id>-<n>. Agents may change only the task's writes and its spec/doc files inside the worktree; anything else, including any change in the main checkout, is rolled back and fails the phase. Repository-local auto_continue controls whether the next ready task follows. --auto is deprecated and cannot override local off. With repository-local auto_merge on a reviewed run's PR is merged first when it may be (see 'factory config local --help').
 
 - `ID`: task id (required)
 - `--note` `TEXT`: a note for the agents, appended to the task
 - `--force`: run even if depends_on are not done in base; never overrides a running task
-- `--auto`: after a successful run (PR opened) start the next ready task of the step, then of the project, whatever its auto_continue (auto-continue); a failure stops the chain. The kanban's queue order goes first and tasks excluded in the kanban are never started by the chain
+- `--auto`: deprecated compatibility option; automatic continuation follows repository-local auto_continue, set with factory config local set --auto-continue on/off
 - `--harness` `NAME`: run every agent of the roster on this harness for this run only (nothing is written); a switch without --model takes the harness's preset model. Step overrides of the workflow still win, so one workflow can mix harnesses. With --auto only the first run of the chain gets it
 - `--model` `NAME`: model of every agent for this run only (like --harness)
 - `--thinking` `{off,minimal,low,medium,high,xhigh,max,ultra}`: thinking level of every agent for this run only (like --harness) (one of `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, `ultra`)
@@ -396,7 +430,7 @@ Continue the task's newest failed, stopped or aborted run in its own worktree an
 - `--run` `RUN_ID`: retry exactly this run (it must belong to the task)
 - `--note` `TEXT`: a note for the agents of the continuing phases
 - `--from` `PHASE`: continue from this phase (a phase name like review_2 or a step like review) instead of the one that failed; the phases after it run again
-- `--auto`: after a successful retry (PR opened) start the next ready task whatever its auto_continue, like factory task run --auto. Without it the retry goes on like task run: auto_merge merges the PR and auto_continue starts the next ready task
+- `--auto`: deprecated compatibility option; follows repository-local auto_continue
 - `--allow-writes`: after a writes_violation or writes_needed: add the paths written outside writes or reported in needs_writes to the task's writes (committed to base by base_changes), then retry from the failed phase with the paths in the Retry note. Paths in protected_files, in the backlog or in the main checkout are never added. If base lacks the new writes (writes_not_committed), commit the backlog, then factory task retry ID
 - `--harness` `NAME`: continue with every agent on this harness (e.g. after a quota failure); it replaces the run's harness override, the switch is recorded in the run and its PR. Without --model the computer's model for the harness, else its preset model
 - `--model` `NAME`: model of every agent for the retry (with --harness)
@@ -445,7 +479,7 @@ Refresh the states of task PRs; for tasks whose PR was merged outside factory an
 factory backlog auto-continue ID [--on | --off | --inherit] [--json] [--repo PATH]
 ```
 
-Write (--on/--off) or remove (--inherit) 'auto_continue' in the index.md of a project or step. With auto_continue: true, a task run that opened its PR is followed by the next ready task that has auto_continue: true too; a chain never starts a task with it off. The change is written to the working tree; runs read the backlog from base, so commit it first.
+Deprecated legacy write. Use factory config local set --auto-continue on|off --repo PATH. Preview old values with factory config local legacy; explicitly take them with factory config local import. Nothing is committed.
 
 - `ID`: project or step id (required)
 - `--on` (exclusive: --on|--off|--inherit (one required))
@@ -460,7 +494,7 @@ Write (--on/--off) or remove (--inherit) 'auto_continue' in the index.md of a pr
 factory backlog auto-merge ID [--on | --off | --inherit] [--json] [--repo PATH]
 ```
 
-Write (--on/--off) or remove (--inherit) 'auto_merge' in the index.md of a project or step (a task sets it with 'factory task edit ID --auto-merge'). With auto_merge: true, a succeeded run whose last review approved and whose PR merges cleanly with no red checks is approved and merged like 'factory task approve'; a workflow without a review phase is never merged automatically. Auto-continue then starts the next task only after the merge. The change is written to the working tree; runs read the backlog from base, so commit it first.
+Deprecated legacy write. Use factory config local set --auto-merge on|off --repo PATH. Preview old values with factory config local legacy; explicitly take them with factory config local import. Nothing is committed.
 
 - `ID`: project or step id (required)
 - `--on` (exclusive: --on|--off|--inherit (one required))
@@ -543,6 +577,57 @@ Validate a workflow file against the role registry (.factory/roles.yaml or the p
 - `--json`: print machine-readable JSON
 - `--roles` `PATH`: role registry instead of .factory/roles.yaml
 - `--agents` `PATH`: agent roster instead of .factory/agents.yaml
+
+### factory config local show
+
+```
+factory config local show [--repo PATH] [--json]
+```
+
+read local repository settings
+
+- `--repo` `PATH`
+- `--json`: print the JSON envelope
+
+### factory config local set
+
+```
+factory config local set [--auto-merge {on,off}] [--auto-continue {on,off}] [--harness {claude,codex,pi,inherit}] [--repo PATH] [--json]
+```
+
+update supplied local fields only
+
+- `--auto-merge` `{on,off}` (one of `on`, `off`)
+- `--auto-continue` `{on,off}` (one of `on`, `off`)
+- `--harness` `{claude,codex,pi,inherit}` (one of `claude`, `codex`, `pi`, `inherit`)
+- `--repo` `PATH`
+- `--json`: print the JSON envelope
+
+### factory config local legacy
+
+```
+factory config local legacy [--repo PATH] [--json]
+```
+
+preview legacy task/step/project values; writes nothing
+
+- `--repo` `PATH`
+- `--json`: print the JSON envelope
+
+### factory config local import
+
+```
+factory config local import [--overwrite] [--auto-merge {on,off}] [--auto-continue {on,off}] [--harness {claude,codex,pi,inherit}] [--repo PATH] [--json]
+```
+
+explicitly import legacy values into HAIFA_HOME
+
+- `--overwrite`: explicitly replace existing local settings
+- `--auto-merge` `{on,off}` (one of `on`, `off`)
+- `--auto-continue` `{on,off}` (one of `on`, `off`)
+- `--harness` `{claude,codex,pi,inherit}` (one of `claude`, `codex`, `pi`, `inherit`)
+- `--repo` `PATH`
+- `--json`: print the JSON envelope
 
 ### factory config roster show
 
@@ -899,6 +984,8 @@ serve the local dashboard (127.0.0.1 unless --host) and open it
 | `already_installed` | 2 | factory init: .factory/config.yaml is committed |
 | `already_running` | 2 | a run of this task is in progress |
 | `approve_failed` | 2 | host approval failed or the pull request head changed; merge stopped |
+| `auto_continue_disabled` | 2 | repository-local auto continue blocks an automatic start |
+| `auto_merge_disabled` | 2 | repository-local auto merge is off; PR remains open |
 | `az_devops_missing` | 2 | the az devops extension is not installed |
 | `az_failed` | 2 | an az command failed |
 | `az_missing` | 2 | the az CLI is not installed |
@@ -920,6 +1007,7 @@ serve the local dashboard (127.0.0.1 unless --host) and open it
 | `conflicting_options` | 2 | two options that exclude each other were given |
 | `cross_origin` | 2 | dashboard API: a write from another origin (Origin or Sec-Fetch-Site) was rejected (HTTP 403) |
 | `dashboard_running` | 2 | upgrade on Windows: the running dashboard locks factory |
+| `deprecated_option` | 2 | legacy operating write; use factory config local set or import |
 | `dirty_base` | 2 | the base checkout has uncommitted changes |
 | `dirty_paths` | 2 | init --commit and config set/remove/move --commit: planned paths exist in the working tree with other content |
 | `dirty_worktree` | 2 | the worktree has uncommitted changes |
@@ -998,6 +1086,9 @@ serve the local dashboard (127.0.0.1 unless --host) and open it
 | `remote_run` | 2 | stop the shared run on the machine that started it |
 | `repo_io_error` | 2 | a registered repository could not be read or written |
 | `repo_missing` | 2 | dashboard API: the registered repository's folder is gone (HTTP 404) |
+| `repo_settings_invalid` | 2 | local repository or inherited harness settings are invalid |
+| `repo_settings_io` | 2 | local repository settings could not be read or saved |
+| `repo_settings_version` | 2 | local repository settings version is unsupported |
 | `run_already_paused` | 2 | the run is already pausing or paused (factory task pause) |
 | `run_in_progress` | 2 | a run with a live process is in progress in the repository (blocks base moves and config set/remove/move) |
 | `run_not_archived` | 2 | only an archived run can be deleted |
@@ -1168,8 +1259,6 @@ id: M01
 title: Core
 workflow: plan-build-test
 writes: [src/]
-auto_continue: false
-auto_merge: false
 ---
 
 Core: the data model and the API.
@@ -1738,20 +1827,19 @@ before and after its pull request was merged. The agent's prompts are overridden
 3. Read `data.run.state`, `data.pr` (the pull request), `data.pr_error` and `data.chain`.
 4. On failure (`run_failed`) the worktree and branch are kept; re-run with `--note` to tell
    the agents what to fix.
-5. Auto-continue (`--auto`, or `auto_continue: true` in the project or step
-   `index.md`, set with `factory backlog auto-continue ID --on|--off|--inherit`):
-   after a run opens its PR, the next ready task of the step, then of the project, starts.
-   The chain stays in that project, even with `--auto`: tasks of other projects,
-   including blockers and direct dependents, must be started separately.
-   Without `--auto` the chain continues only after a task with `auto_continue: true` and
-   starts only tasks with `auto_continue: true`; `--auto` starts any task.
+5. Auto-continue is a repository-local choice in HAIFA_HOME, default off.
+   Set it with `factory config local set --auto-continue on|off --repo PATH`.
+   `--auto` does not bypass local off. Accepted runs finish after switching off;
+   further automatic starts, slot refills and automatic retries are blocked.
+   After a run opens its PR, the next ready task of the step, then of the project, starts.
+   The chain stays in that project; start tasks of other projects separately.
    The dashboard's kanban sets the order of ready tasks (taken first) and can exclude a
    task from auto-continue (skipped as `excluded`, with `--auto` too; it still runs when
    started by hand).
    Tasks it skips carry a reason (`needs_environment`, `human_task`, `no_workflow`, `waits_on_pr`, `blocked`, `in_review`, `merged_outside`, `running`, `cannot_start`, `writes_overlap`, `exclusive`, `excluded`, `no_slot`); the chain stops with
    `failed`, `exhausted`, `disabled`, `not_merged` (`data.chain.stop`, `data.chain.waiting`). The chain approves and
    merges nothing except through `auto_merge` (next point).
-   Self-healing (`auto_heal`, inherited like `auto_continue`, default `true`; switch it off
+   Self-healing (`auto_heal`, inherited in the backlog, default `true`; switch it off
    with `auto_heal: false` or `factory backlog edit ID --auto-heal off`): a chain that goes
    on acts on a failed run by its `failure_kind`. `quota` continues on the project's
    quota chain (`quota_switch: [HARNESS, ...]`, `quota_switch_back`, project-only, set with
@@ -1762,10 +1850,9 @@ before and after its pull request was merged. The agent's prompts are overridden
    done without changes and the chain goes on; every other kind stops the chain as before.
    Each action is in `data.chain.events` (`action`: `fallback`, `retry` or `close`, `ok`,
    `text`), in `task_chains.events` and on the dashboard's Overview.
-6. Auto-merge (`auto_merge: true`, inherited project -> step -> task; set it with
-   `factory backlog auto-merge ID --on|--off|--inherit` or on a task with
-   `factory task edit ID --auto-merge on|off|inherit`, e.g. off for a task that changes
-   the guard or permissions): after the run its PR is approved and merged like
+6. Auto-merge is a repository-local choice in HAIFA_HOME, set with
+   `factory config local set --auto-merge on|off`. Backlog flags do not control it.
+   After the run its PR is approved and merged like
    `factory task approve` (`merged_by: auto-merge` in `task_prs`) only when the run
    `succeeded`, the workflow has a review phase whose last review approved with no blocking
    or unmet item, the PR merges cleanly and its checks finished with none red. Running
@@ -1774,7 +1861,13 @@ before and after its pull request was merged. The agent's prompts are overridden
    review is never merged automatically. Otherwise `data.auto_merge` (`merged`, `code`,
    `reason`) says why and the PR waits for `factory task approve`. With auto-continue the
    next task starts only after the merge; a PR that was not merged stops the chain
-   (`not_merged`).
+   (`not_merged`). The local value is read again while waiting for CI and immediately
+   before the hosting merge, serialized with settings updates. Off leaves the PR open;
+   a status-done commit already pushed for CI stays on its branch. A hosting merge
+   request already submitted cannot be withdrawn. Manual approve is explicit and
+   independent of this flag and `base_pr_merge`. Auto continue off does not prevent
+   finishing the current PR when auto merge stays on; changing auto merge never changes
+   auto continue. Missing settings default to off; invalid settings stop automation.
 7. Parallel runs (`max_parallel_runs` in `.factory/config.yaml`, whole number ≥ 1,
    default 1): with 1 the chain runs one task after another. Above 1 the chain keeps up to
    that many slots taken (each run a separate `factory task run` process) and refills a
@@ -1900,10 +1993,10 @@ the network (RPC failed, HTTP2 framing, remote end hung up, timeout) is retried 
 with a pause, including hosting server errors (HTTP 5xx, Internal Server Error); a rejected
 push (non-fast-forward, rights, protected branch or hook) is not.
 
-After publication, effective `auto_merge` merges the PR under the same review and CI
+After publication, repository-local `auto_merge` merges the PR under the same review and CI
 conditions as `task run`, including conflict resolution and `auto_merge_error` on failure.
 The same auto-continue chain then selects ready tasks in kanban order and respects slots
-and `max_parallel_runs`. No `--auto` flag is needed: inherited `auto_continue` applies.
+and `max_parallel_runs`. No `--auto` flag is needed: repository-local `auto_continue` applies.
 Without `auto_merge` the PR stays open for review.
 `data.auto_merge` and `data.chain` report the merge outcome, runs and stop reason.
 The dashboard starts publish with auto-merge in a separate process so CI never blocks it.
