@@ -9,12 +9,12 @@ description: >-
   multi-repository operations.
 ---
 
-# HAIFA skill: driving the `factory` CLI (aifactory 0.1.579)
+# HAIFA skill: driving the `factory` CLI (aifactory 0.1.581)
 
 This guide is generated from the installed code by `factory --skill`.
 Save its Markdown output as an agent's `SKILL.md`; `factory --skill --json`
 returns the same guide inside the JSON envelope. Compare `factory --version`
-with aifactory 0.1.579: whenever the version changes, regenerate this skill
+with aifactory 0.1.581: whenever the version changes, regenerate this skill
 with `factory --skill` and replace the saved copy.
 
 ## Prerequisites
@@ -100,7 +100,7 @@ their common Git identity; another clone or HAIFA_HOME has separate choices. Ena
 choice does not start work. `base_pr_merge` for administration PRs remains separate.
 
 Preview preserved legacy effective values and origins through project, step and task with
-`factory config local legacy --repo PATH --json`, or **Náhled starých voleb** on Overview.
+`factory config local legacy --repo PATH --json`.
 Explicitly adopt with `factory config local import --repo PATH --json`. Uniform values can
 be adopted directly. Conflicts require concrete repository-wide `--auto-merge on|off`,
 `--auto-continue on|off` or `--harness claude|codex|pi|inherit` choices. Existing local choices
