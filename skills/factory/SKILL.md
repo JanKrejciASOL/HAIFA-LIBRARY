@@ -9,12 +9,12 @@ description: >-
   multi-repository operations.
 ---
 
-# HAIFA skill: driving the `factory` CLI (aifactory 0.1.586)
+# HAIFA skill: driving the `factory` CLI (aifactory 0.1.589)
 
 This guide is generated from the installed code by `factory --skill`.
 Save its Markdown output as an agent's `SKILL.md`; `factory --skill --json`
 returns the same guide inside the JSON envelope. Compare `factory --version`
-with aifactory 0.1.586: whenever the version changes, regenerate this skill
+with aifactory 0.1.589: whenever the version changes, regenerate this skill
 with `factory --skill` and replace the saved copy.
 
 ## Prerequisites
@@ -1416,7 +1416,7 @@ the library and deletes the copy from the repo in one commit (see Items of the r
 ## Workflow format
 
 A workflow is YAML in `.factory/workflows/<name>.yaml` (read from base), falling back to the
-library (without a library the packaged workflows: `build` (Implement the task in one shot and commit it, without tests or review); `build-review` (Build straight from the task, then have a reviewer confirm it is what was asked for, with revisions); `build-test` (Build straight from the task, repair until the checks are green, and commit only green code); `build-test-review` (Build straight from the task, test with repairs, review with revision — no separate plan or write-up); `ci-fix` (Repair what the PR's red CI checks reported, test, review, commit to the same PR); `document` (Write up a finished change from its diff, which code captures before the documenter reads it); `heal` (Run the whole suite and repair until it is green — each repair checked on what it touched, the end confirmed on the whole suite); `plan` (Turn a request into a written plan and stop there, so a human can read it first); `plan-build` (Plan the change, implement it and commit the result without running tests); `plan-build-test` (Plan and build, repair until the suite is green, and commit only green code); `plan-build-test-quality` (Plan and build, then lint, typecheck, build and test the whole repo with repairs, and commit only verified code); `quality` (Lint, typecheck, build and test the whole repo without changing it); `resolve` (Bring a conflicting pull request up to date with base and prove the suite is still green); `resolve-reviewed` (Resolve like `resolve`, then review a resolution the agent wrote; auto-merge resolves a conflicting PR with it); `scout` (Read-only recon that reports where things live without changing the repo); `simple-sdlc` (Plan, build, test with repairs, review with revision, then document — committing each work product separately)).
+library (without a library the packaged workflows: `build` (Implement the task in one shot and commit it, without tests or review); `build-review` (Build straight from the task, then have a reviewer confirm it is what was asked for, with revisions); `build-test` (Build straight from the task, repair until the checks are green, and commit only green code); `build-test-review` (Build straight from the task, test with repairs, review with revision — no separate plan or write-up); `ci-fix` (Repair what the PR's red CI checks reported, test, review, commit to the same PR); `document` (Write up a finished change from its diff, which code captures before the documenter reads it); `heal` (Repair the repo with scoped checks and confirm the whole suite once before commit); `plan` (Turn a request into a written plan and stop there, so a human can read it first); `plan-build` (Plan the change, implement it and commit the result without running tests); `plan-build-test` (Plan and build, repair until the suite is green, and commit only green code); `plan-build-test-quality` (Plan and build, then lint, typecheck, build and test the whole repo with repairs, and commit only verified code); `quality` (Lint, typecheck, build and test the whole repo without changing it); `resolve` (Bring a conflicting pull request up to date with base and prove the suite is still green); `resolve-reviewed` (Resolve like `resolve`, then review a resolution the agent wrote; auto-merge resolves a conflicting PR with it); `scout` (Read-only recon that reports where things live without changing the repo); `simple-sdlc` (Plan, build, test with repairs, review with revision, then document — committing each work product separately)).
 
 - Top-level keys: `name` (required), `description`, `steps` (required), `accept`.
 - A step is one of:
@@ -1436,14 +1436,25 @@ library (without a library the packaged workflows: `build` (Implement the task i
   change, nothing beyond. There is no configured test command; every repo, whatever its
   stack, gets its checks from the tester. The gate `checks_runnable` requires the first
   argv element of every check on PATH or as a file in the worktree.
-- A later `test_plan` keeps every check of the previous plan (same argv) or names it in
-  `dropped` with a reason (gate `plan_keeps_checks`). Workflows plan again after every
-  fix and every revision, from the whole diff since `baseline`.
-- A `test_plan` step may require a coverage: `coverage: full` (every check the repo has)
-  or `coverage: scoped` (only the latest changes); gate `coverage_required`. The result of
-  a `test` repeats the plan's coverage, so conditions can read `test.coverage == "full"`.
-  The packaged `heal` workflow runs the whole suite, repairs until it is green (each repair
-  checked scoped, then confirmed on the whole suite) and commits only on a green full run.
+- Select the first checks from the diff against `baseline`: documentation/backlog needs reader
+  validation only, with no build or code tests; code needs affected projects and direct callers.
+  Search tests for callers before choosing full coverage. Full coverage is reserved for shared
+  infrastructure, paths marked `shared_paths: glob, path/prefix` in the testing profile, or
+  dependencies that cannot be traced after a caller search.
+- After fixes and revisions the interpreter requires scoped plans: retain failures and
+  unexecuted checks, and check the latest edits and direct callers. Previously green,
+  unaffected checks and deferred whole-suite checks need no repeated `dropped` reason.
+  A failed ordinary check cannot be discarded, even with a dropped reason.
+- A full plan requests one final confirmation. The interpreter defers it, asks for a
+  scoped plan for intermediate tests, and confirms once after review and before commit
+  or acceptance. This applies to custom workflows too. A failed confirmation returns to
+  bounded repairs with scoped regression checks under the failed suite's name; the
+  whole suite never runs again. The `heal` workflow follows the same rule.
+- Resolve uses the PR head before rebase as its testing baseline, including code merged
+  automatically. Documentation-only changes need reader checks; automatically merged
+  code needs affected project builds and tests. Conflict file names alone do not set scope.
+- Test results and phase logs record `full_suite_runs` and the full plan's reason;
+  the PR test summary and dashboard phase evidence show the count and reasons.
 - A red `test` goes directly to the builder's `fix` with the failed commands
   and their verbatim output. There are no implicit triage or test-plan review calls.
   The final code reviewer requests missing regression tests directly from the builder.
